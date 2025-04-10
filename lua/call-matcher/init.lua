@@ -4,8 +4,43 @@ local M = {}
 -- Handles newlines, consecutive spaces, and trims leading/trailing whitespace
 -- For parameters, also removes leading commas
 local function clean_whitespace(str, is_param)
-	-- Remove newlines and consecutive whitespace
-	str = str:gsub("[\\\n]", " "):gsub("%s+", " ")
+	-- Remove \\\n pattern, and newlines and consecutive whitespace outside of double-quoted strings
+	str = str:gsub("\\\n", "")
+
+	local result = {}
+	local i = 1
+	local n = #str
+
+	while i <= n do
+		if str:sub(i, i) == '"' and (i == 1 or str:sub(i - 1, i - 1) ~= "\\") then
+			table.insert(result, '"')
+			i = i + 1
+
+			while i <= n do
+				local char = str:sub(i, i)
+				table.insert(result, char)
+
+				if char == '"' and (i == 1 or str:sub(i - 1, i - 1) ~= "\\") then
+					i = i + 1
+					break
+				end
+				i = i + 1
+			end
+		else
+			if str:sub(i, i):match("%s") then
+				table.insert(result, " ")
+				while i <= n and str:sub(i, i):match("%s") do
+					i = i + 1
+				end
+			else
+				table.insert(result, str:sub(i, i))
+				i = i + 1
+			end
+		end
+	end
+
+	str = table.concat(result)
+
 	-- If it's a parameter, first remove leading comma + any whitespace
 	if is_param then
 		str = str:gsub("^%s*,%s*", ""):gsub("^,", "")
